@@ -34,6 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+extern osMessageQueueId_t can_incoming_packet_queueHandle;
 
 /* USER CODE END PD */
 
@@ -54,9 +55,15 @@ void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
   FDCAN_RxHeaderTypeDef header;
-  uint8_t data[2];
-  HAL_StatusTypeDef res = HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &header, data);
-  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+  can_packet_t msg;
+  HAL_StatusTypeDef res;
+
+  res = HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &header, msg.data);
+
+  msg.id = header.Identifier;
+  msg.len = header.DataLength;
+
+  osMessageQueuePut(can_incoming_packet_queueHandle, &msg, 0, 0);
 }
 
 /* USER CODE END PFP */

@@ -54,6 +54,11 @@ const osThreadAttr_t defaultTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
   .stack_size = 128 * 4
 };
+/* Definitions for can_incoming_packet_queue */
+osMessageQueueId_t can_incoming_packet_queueHandle;
+const osMessageQueueAttr_t can_incoming_packet_queue_attributes = {
+  .name = "can_incoming_packet_queue"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -86,6 +91,10 @@ void MX_FREERTOS_Init(void) {
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
+  /* Create the queue(s) */
+  /* creation of can_incoming_packet_queue */
+  can_incoming_packet_queueHandle = osMessageQueueNew (16, sizeof(uint16_t), &can_incoming_packet_queue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -114,10 +123,13 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
+  can_packet_t msg;
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    if (osMessageQueueGet(can_incoming_packet_queueHandle, &msg, 0, 0) == osOK) {
+      HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+    }
   }
   /* USER CODE END StartDefaultTask */
 }
