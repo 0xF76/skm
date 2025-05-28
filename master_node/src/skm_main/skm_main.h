@@ -8,6 +8,7 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "usart.h"
+#include "fdcan.h"
 
 
 

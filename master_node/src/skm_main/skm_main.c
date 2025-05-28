@@ -4,7 +4,8 @@
 */
 
 #include "skm_main.h"
-
+#include <string.h>
+#include "crc.h"
 
 
 osThreadId_t uart_parser_task_handle;
@@ -28,8 +29,18 @@ osThreadAttr_t uart_encoder_task_attributes = {
   .stack_size = 128 * 4
 };
 
-osMessageQueueId_t incoming_uart_packet_queue_handle;
-osMessageQueueId_t outgoing_uart_packet_queue_handle;
+osThreadId_t can_tx_task_handle;
+osThreadAttr_t can_tx_task_attributes = {
+  .name = "CanTxTask",
+  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 128 * 4
+};
+
+osMessageQueueId_t uart_incoming_packet_queue_handle;
+osMessageQueueId_t uart_outgoing_packet_queue_handle;
+
+osMessageQueueId_t can_incoming_packet_queue_handle;
+osMessageQueueId_t can_outgoing_packet_queue_handle;
 
 
 #define UART_PARSER_DMA_BUFFER_SIZE 32
@@ -63,6 +74,12 @@ typedef struct {
 
 uart_parser_t uart_parser;
 
+typedef struct {
+  uint8_t cmd;
+  uint8_t len;
+  uint8_t payload[32];
+} can_packet_t;
+
 
 void uart_parser_task(void* argument);
 void incoming_packet_handler_task(void* argument);
@@ -72,6 +89,32 @@ void uart_encoder_task(void* argument);
 void uart_parser_buffer_put(uart_parser_t *parser, uint8_t *data, uint16_t len);
 uint8_t uart_parser_buffer_get(uart_parser_t *parser, uint8_t *data);
 void uart_parser_parse_buffer(uart_parser_t* parser);
+
+void can_tx_task(void* argument) {
+  can_packet_t packet;
+
+  HAL_FDCAN_Start(&hfdcan1);
+
+  for(;;) {
+    if(osMessageQueueGet(can_outgoing_packet_queue_handle, &packet, NULL, osWaitForever) == osOK) {
+      FDCAN_TxHeaderTypeDef header;
+      header.Identifier = packet.cmd;
+      header.IdType = FDCAN_STANDARD_ID;
+      header.TxFrameType = FDCAN_DATA_FRAME;
+      header.DataLength = packet.len;
+      header.ErrorStateIndicator = FDCAN_ESI_PASSIVE;
+      header.BitRateSwitch = FDCAN_BRS_OFF;
+      header.FDFormat = FDCAN_CLASSIC_CAN;
+      header.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+      header.MessageMarker = 0;
+
+      while(!HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1)) {}
+
+      HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &header, packet.payload);
+    }
+
+  }
+}
 
 
 
@@ -88,8 +131,6 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t size) {
 
 
 
-
-
 void init(void) {
   osKernelInitialize();
 
@@ -99,10 +140,13 @@ void init(void) {
 
   uart_encoder_task_handle = osThreadNew(uart_encoder_task, NULL, &uart_encoder_task_attributes);
 
+  can_tx_task_handle = osThreadNew(can_tx_task, NULL, &can_tx_task_attributes);
+
 
   /* Queues creation */
-  incoming_uart_packet_queue_handle = osMessageQueueNew(10, sizeof(uart_packet_t), NULL);
-  outgoing_uart_packet_queue_handle = osMessageQueueNew(10, sizeof(uart_packet_t), NULL);
+  uart_incoming_packet_queue_handle = osMessageQueueNew(10, sizeof(uart_packet_t), NULL);
+  uart_outgoing_packet_queue_handle = osMessageQueueNew(10, sizeof(uart_packet_t), NULL);
+  can_outgoing_packet_queue_handle = osMessageQueueNew(10, sizeof(can_packet_t), NULL);
 
 
   osKernelStart();
@@ -124,13 +168,18 @@ void uart_parser_task(void* argument) {
 
   }
 }
-
 void incoming_packet_handler_task(void* argument) {
   uart_packet_t packet;
+  can_packet_t can_packet;
+
 
   for(;;) {
-    if(osMessageQueueGet(incoming_uart_packet_queue_handle, &packet, NULL, osWaitForever) == osOK) {
-      osMessageQueuePut(outgoing_uart_packet_queue_handle, &packet, 0, 0);
+    if(osMessageQueueGet(uart_incoming_packet_queue_handle, &packet, NULL, osWaitForever) == osOK) {
+      can_packet.cmd = packet.cmd;
+      can_packet.len = packet.len;
+      memcpy(can_packet.payload, packet.payload, packet.len);
+
+      osMessageQueuePut(can_outgoing_packet_queue_handle, &can_packet, 0, 0);
     }
   }
 }
@@ -142,7 +191,7 @@ void uart_encoder_task(void* argument) {
   uint16_t buffer_idx;
 
   for(;;) {
-    if(osMessageQueueGet(outgoing_uart_packet_queue_handle, &packet, NULL, osWaitForever) == osOK) {
+    if(osMessageQueueGet(uart_outgoing_packet_queue_handle, &packet, NULL, osWaitForever) == osOK) {
       buffer_idx = 0;
 
       buffer[buffer_idx++] = packet.cmd;
@@ -221,13 +270,11 @@ void uart_parser_parse_buffer(uart_parser_t* parser) {
         parser->packet.crc |= (uint16_t)data << 8;
 
       // Calculate CRC for the received packet
-      uint16_t crc = 0;
-      for(int i = 0; i < parser->packet.len; i++) {
-        crc ^= parser->packet.payload[i];
-      }
+      uint32_t crc = HAL_CRC_Calculate(&hcrc, (uint32_t*)parser->packet.payload, parser->packet.len);
+      crc &= 0xFFFF; // Ensure CRC is 16 bits
 
       if(crc == parser->packet.crc) {
-        osMessageQueuePut(incoming_uart_packet_queue_handle, &(parser->packet), 0, 0);
+        osMessageQueuePut(uart_incoming_packet_queue_handle, &(parser->packet), 0, 0);
       }
       parser->state = UART_PARSER_HEADER_CMD;
       break;
