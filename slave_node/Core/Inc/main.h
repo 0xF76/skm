@@ -82,11 +82,6 @@ void Error_Handler(void);
 #define T_SWO_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-  typedef struct {
-    uint32_t id;
-    uint8_t len;
-    uint8_t data[64];
-  } can_packet_t;
 
 /* USER CODE END Private defines */
 

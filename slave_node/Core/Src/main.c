@@ -24,7 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "skm_main/skm_main.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -34,7 +34,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-extern osMessageQueueId_t can_incoming_packet_queueHandle;
 
 /* USER CODE END PD */
 
@@ -53,18 +52,7 @@ extern osMessageQueueId_t can_incoming_packet_queueHandle;
 void SystemClock_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
-void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
-  FDCAN_RxHeaderTypeDef header;
-  can_packet_t msg;
-  HAL_StatusTypeDef res;
 
-  res = HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &header, msg.data);
-
-  msg.id = header.Identifier;
-  msg.len = header.DataLength;
-
-  osMessageQueuePut(can_incoming_packet_queueHandle, &msg, 0, 0);
-}
 
 /* USER CODE END PFP */
 
@@ -104,8 +92,8 @@ int main(void)
   MX_GPIO_Init();
   MX_FDCAN1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_RX_FIFO0_FULL | FDCAN_IT_RX_FIFO0_MESSAGE_LOST, 0);
-  HAL_FDCAN_Start(&hfdcan1);
+  init();
+
 
   /* USER CODE END 2 */
 
@@ -212,6 +200,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+  error_handler();
   __disable_irq();
   while (1)
   {
