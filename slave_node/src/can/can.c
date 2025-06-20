@@ -24,6 +24,7 @@ void can_tx_task(void* argument) {
 
 	for(;;) {
 
+
 		if(osMessageQueueGet(can_outgoing_packet_queue_handle, &packet, NULL, osWaitForever) == osOK) {
 			FDCAN_TxHeaderTypeDef header;
 			header.Identifier = packet.cmd;
@@ -42,8 +43,6 @@ void can_tx_task(void* argument) {
 		}
 
 	}
-
-	//TODO: Implement CAN TX task
 
 }
 

@@ -39,10 +39,10 @@ void uart_rx_packet_handler_task(void* argument) {
       can_packet.cmd = packet.cmd;
       can_packet.len = packet.len;
       memcpy(can_packet.payload, packet.payload, packet.len);
+      HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
       osMessageQueuePut(can_outgoing_packet_queue_handle, &can_packet, 0, 0);
 
-      HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
     }
   }
 }

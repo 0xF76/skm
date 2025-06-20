@@ -33,6 +33,13 @@ osThreadAttr_t can_tx_task_attributes = {
 	.stack_size = 128 * 4
 };
 
+osThreadId_t can_rx_task_handle;
+osThreadAttr_t can_rx_task_attributes = {
+    .name = "CanRxTask",
+    .priority = (osPriority_t) osPriorityNormal,
+    .stack_size = 128 * 4
+};
+
 
 void create_tasks(void) {
 	uart_rx_task_handle = osThreadNew(uart_rx_task, NULL, &uart_rx_task_attributes);
@@ -41,4 +48,5 @@ void create_tasks(void) {
 	uart_tx_task_handle = osThreadNew(uart_tx_task, NULL, &uart_tx_task_attributes);
 
 	can_tx_task_handle = osThreadNew(can_tx_task, NULL, &can_tx_task_attributes);
+	can_rx_task_handle = osThreadNew(can_rx_task, NULL, &can_rx_task_attributes);
 }
