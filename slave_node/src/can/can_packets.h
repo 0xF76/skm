@@ -16,9 +16,9 @@ typedef enum {
 } can_cmd_t;
 
 typedef enum {
-  		CAN_ARG_LED = 0x01,
-			CAN_ARG_PING = 0x04,
-			CAN_ARG_PONG = 0x04,
+  		CAN_ARG_LED =  4,
+			CAN_ARG_PING = 4,
+			CAN_ARG_PONG = 4,
 } can_arg_t;
 
 typedef struct {
