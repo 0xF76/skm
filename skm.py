@@ -132,15 +132,11 @@ def main():
                 pong_received.wait(0.1)
                 waiting_for_pong = False
             elif choice == '2':
-                index = int(input("Enter LED index (0 (builtin) - 7): "))
-                if index == 0:
-                    on_of = int(input("Enter 1 for ON, 0 for OFF: "))
-                    send_packet(ser, 0x05, struct.pack('<BBBB', index, on_of, 0, 0))
-                else:
-                    r = int(input("Enter R value (0-255): "))
-                    g = int(input("Enter G value (0-255): "))
-                    b = int(input("Enter B value (0-255): "))
-                    send_packet(ser, 0x05, struct.pack('<BBBB', index, r, g, b))
+                index = int(input("Enter LED index (0 - 6): "))
+                r = int(input("Enter R value (0-255): "))
+                g = int(input("Enter G value (0-255): "))
+                b = int(input("Enter B value (0-255): "))
+                send_packet(ser, 0x05, struct.pack('<BBBB', index, r, g, b))
             elif choice == '3':
                 cmd_hex = input("Enter CMD (hex, e.g., 0x42): ").strip()                
                 

@@ -46,7 +46,7 @@ static void ws2812_encode_byte(uint8_t byte, uint8_t *buf) {
 
 void ws2812_init(void) {
 
-  for(int i = 1; i < LED_COUNT; i++) {
+  for(int i = 0; i < LED_COUNT; i++) {
     ws2812_set_led(i, 0, 0, 0); // Initialize all LEDs to off
   }
 

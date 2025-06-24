@@ -7,9 +7,7 @@
 #include "shared/tasks.h"
 #include "shared/queues.h"
 #include "ws2812.h"
-
 #include <cmsis_os2.h>
-
 
 
 
