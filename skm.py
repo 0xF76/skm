@@ -108,7 +108,7 @@ def menu():
 # ------------------------
 def main():
     global waiting_for_pong, pong_received
-    port = 'COM22'
+    port = '/dev/ttyACM0'
     ser = serial.Serial(port, baudrate=115200, timeout=1)
 
     threading.Thread(target=read_loop, args=(ser,), daemon=True).start()
